@@ -1,6 +1,8 @@
-import java.io.File;
+package midi;
+
 import java.io.IOException;
 import java.util.ArrayList;
+import java.io.File;
 
 import javax.sound.midi.*;
 
@@ -8,6 +10,10 @@ import javax.sound.midi.*;
 public class MidiParser {
 
     Sequence seq;
+    //    wtl
+    long numberOfMicroSecond;
+    int resolution;
+    //    wtl
     ArrayList<ArrayList<MidiEvent>> eventList = new ArrayList<ArrayList<MidiEvent>>();
 
     /**
@@ -21,7 +27,12 @@ public class MidiParser {
         try {
             File file = new File(filename);
             seq = MidiSystem.getSequence(file);
-
+            //            wtl
+            float divisionType = seq.getDivisionType();
+            System.out.println(divisionType);//PPQ SMPTE
+            resolution = seq.getResolution();
+            System.out.println("resolution is " + resolution);
+            //            wtl
             getEvent();
 
         } catch (IOException e) {
@@ -40,7 +51,25 @@ public class MidiParser {
             for (Track track : tracks) {
                 ArrayList<MidiEvent> tempList = new ArrayList<MidiEvent>();
                 for (int j = 0; j < track.size(); j++)//all events of one track
+                {
                     tempList.add(track.get(j));
+                    //                	wtl
+                    MidiMessage message=track.get(j).getMessage();
+                    byte b[]=message.getMessage();
+
+                    if(b[0] == -1)
+                    {
+                        if(b[1] == 81)
+                        {
+                            //                    		b[3] = 1;
+                            //                    		b[4] = 2;
+                            //                    		b[5] = 3;
+                            numberOfMicroSecond = b[3] * 256 * 256 + b[4] * 256 + b[5];
+                            System.out.println("numberOfMicroSecond is " + numberOfMicroSecond);
+                        }
+                    }
+                    //                    wtl
+                }
                 eventList.add(tempList);
             }
         }catch (Exception e){
@@ -48,7 +77,11 @@ public class MidiParser {
         }
     }
 
-    public ArrayList TimeEvent(long timestamp){
+    public ArrayList TimeEvent(double timestamp_in){
+        //    	wtl
+        long timestamp = (long)(timestamp_in * 1000000) / numberOfMicroSecond * resolution;
+        System.out.println(timestamp);
+        //    	wtl
         ArrayList<ArrayList<MidiEvent>> poped = new ArrayList<ArrayList<MidiEvent>>();
         for (ArrayList<MidiEvent> aList : eventList) {
             int index = 0;
