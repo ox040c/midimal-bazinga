@@ -1,4 +1,4 @@
-package midi;
+package ox040c;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -72,19 +72,19 @@ public class Midi {
                         //                		System.out.println("The tempo of the track is:");
                         if((b[3] & 0x80) == 0)
                         {
-                            System.out.println("升调" + (b[3] & 0x01));
+                            System.out.println("鍗囪皟" + (b[3] & 0x01));
                         }
                         else
                         {
-                            System.out.println("降调" + (b[3] & 0x01));
+                            System.out.println("闄嶈皟" + (b[3] & 0x01));
                         }
                         if(b[4] == 0)
                         {
-                            System.out.println("大调");
+                            System.out.println("澶ц皟");
                         }
                         else
                         {
-                            System.out.println("小调");
+                            System.out.println("灏忚皟");
                         }
                     }
                 }
