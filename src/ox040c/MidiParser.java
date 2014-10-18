@@ -11,11 +11,13 @@ import javax.sound.midi.*;
 public class MidiParser {
 
     Sequence seq;
-    //    wtl
-    long numberOfMicroSecond;
+
+    long microSecondPerQuarterNote;
     int PPQ;
-    //    wtl
-    ArrayList<MyMidiEvent> eventList = new ArrayList<MyMidiEvent>();
+
+    ArrayList<MyMidiEvent> noteEventList = new ArrayList<MyMidiEvent>();
+    ArrayList<MyMidiEvent> timeEventList = new ArrayList<MyMidiEvent>();
+    ArrayList<MyMidiEvent> metaEventList = new ArrayList<MyMidiEvent>();
 
     /**
      * Constructor, with one arg to take filename
@@ -28,7 +30,8 @@ public class MidiParser {
         try {
             File file = new File(filename);
             seq = MidiSystem.getSequence(file);
-            eventList.clear();
+            noteEventList.clear();
+            metaEventList.clear();
         } catch (IOException e) {
             System.out.println("Failed to open file: " + filename);
         } catch (InvalidMidiDataException e) {
@@ -37,90 +40,127 @@ public class MidiParser {
     }
 
     /**
+     * private method for parsing file into an EventList
      * calling this method would decode out necessary information
      * move costly function out of constructor
-     */
-    public void init() {
-
-        // TODO: what's division type?
-        // float divisionType = seq.getDivisionType();
-        // System.out.println(divisionType);
-        // PPQ SMPTE
-
-        // assume we got PPQ (most midi files do)
-        PPQ = seq.getResolution();
-        System.out.format("PPQ(pulse per quarter-note): %d\n", PPQ);
-
-        // generate event list
-        getEvent();
-    }
-
-    /**
-     * private method for parsing file into an EventList
      *
      * for the sake of simplicity, all events will be put
      * into a single list, sorted by ticks
      */
-    private void getEvent(){
+    public void init(){
+
         try{
+
+            // TODO: what's division type?
+            // float divisionType = seq.getDivisionType();
+            // System.out.println(divisionType);
+            // PPQ SMPTE
+
+            // assume we got PPQ (most midi files do)
+            PPQ = seq.getResolution();
+            System.out.format("PPQ(pulse per quarter-note): %d\n", PPQ);
+
+            // generate event list
+
             Track[] tracks = seq.getTracks();
             // all tracks
             for (Track track : tracks) {
                 // all events of one track
                 for (int j = 0; j < track.size(); j++) {
-                    eventList.add(new MyMidiEvent(track.get(j)));
+                    //noteEventList.add(new MyMidiEvent(track.get(j)));
+                    eventFilter(track.get(j));
                 }
             }
 
-            Collections.sort(eventList, new MyMidiEvent());
-            System.out.print(eventList.size());
+            Collections.sort(noteEventList, new MyMidiEvent());
         } catch (Exception e){
             e.printStackTrace();
         }
     }
 
 
-    private void parseType(MidiMessage message) {
-        //                	wtl
-        byte b[]=message.getMessage();
+    private void eventFilter(MidiEvent event) {
 
-        if(b[0] == -1)
-        {
-            if(b[1] == 81)
-            {
-                //                    		b[3] = 1;
-                //                    		b[4] = 2;
-                //                    		b[5] = 3;
-                numberOfMicroSecond = b[3] * 256 * 256 + b[4] * 256 + b[5];
-                System.out.println("numberOfMicroSecond is " + numberOfMicroSecond);
-            }
+        byte b[] = event.getMessage().getMessage();
+
+        switch (b[0] >> 4 & 0x0f) {
+            case 0x9:
+            case 0x8:
+                noteEventList.add(new MyMidiEvent(event));
+                break;
+            case 0xf:
+                if (b[0] == (byte)0xff) {
+                    switch (b[1]) {
+                        case (byte) 0x51:
+                            timeEventList.add(new MyMidiEvent(event));
+                            microSecondPerQuarterNote = b[3] * 256 * 256 + b[4] * 256 + b[5];
+                            System.out.println("tick: " + event.getTick() + " msg: " +
+                                    "microSecondPerQuarterNote is " + microSecondPerQuarterNote);
+                            break;
+                        case (byte) 0x58:
+                            System.out.println("The beat of the track is:");
+                            String strHex3 = Integer.toHexString(b[3] & 0xFF);
+                            String strHex4 = Integer.toHexString(b[4] & 0xFF);
+                            String strHex5 = Integer.toHexString(b[5] & 0xFF);
+                            String strHex6 = Integer.toHexString(b[6] & 0xFF);
+                            String s = strHex3 + strHex4 + strHex5 + strHex6;
+                            System.out.println(s);
+                            break;
+                        case (byte) 0x59:
+                            String scales = new String("CGDAEBFCGDAEBFC");
+                            String mSig = Character.toString(scales.charAt(7 + b[3]));
+                            String mSh = b[3] >= 0 ? "Sharp" : "Flat";
+                            mSh = b[3] == 0? "" : mSh;
+                            String mKey = b[4] == 1 ? "Minor" : "Major";
+                            System.out.println(mSig + " " + mSh + " " + mKey);
+                            break;
+                        default:
+                            break;
+                    }
+                }
+                break;
+            default:
+                break;
         }
-        //                    wtl
+
+    }
+
+    /**
+     * convert time(second) to ticks
+     * currently this function takes the first "set tempo"
+     * event as the conversion parameter, and later "set tempo"
+     * events would be ignored
+     * TODO: more accurate timing
+     * @param timestamp_in
+     * @return
+     */
+    private long secondToTick(double timestamp_in) {
+        return (long) timestamp_in * 1000000 / microSecondPerQuarterNote * PPQ;
     }
 
     public ArrayList TimeEvent(double timestamp_in){
-        long timestamp = 200;
-        //long timestamp = (long)(timestamp_in * 1000000) / numberOfMicroSecond * PPQ;
+        long timestamp = secondToTick(timestamp_in);
         //System.out.println(timestamp);
 
         ArrayList<MyMidiEvent> poped = new ArrayList<MyMidiEvent>();
+        poped.clear();
             int index = 0;
             /**
              * Get events whose ticks < timestamp and pop them out of the list
              */
-            for (MyMidiEvent anEvent : eventList) {
+            for (MyMidiEvent anEvent : noteEventList) {
 
                 if (anEvent.getMyEvent().getTick() <= timestamp) {
                     poped.add(anEvent);
                 }
                 else {
-                    index = eventList.indexOf(anEvent);
+                    index = noteEventList.indexOf(anEvent);
                     break;
                 }
             }
 
             for (int i = 0; i < index; i++) {
-                eventList.remove(i);
+                noteEventList.remove(0);
             }
 
         return poped;
