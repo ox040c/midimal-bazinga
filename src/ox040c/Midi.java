@@ -9,16 +9,13 @@ public class Midi {
     public static void main(String[] args) {
 
         MidiParser a=new MidiParser("./multi.mid");
-        ArrayList<ArrayList<MidiEvent>> test = a.TimeEvent(200);
+        a.init();
+        ArrayList<MyMidiEvent> test = a.TimeEvent(200);
 
-        for(int i=0;i<test.size();i++){
-            System.out.println("Track "+i);
-            ArrayList<MidiEvent> now = test.get(i);
-            int len = now.size();
-            for(int j=0;j<len;j++){
-                System.out.println("event "+j+":");
-                System.out.println("tick="+now.get(j).getTick());
-                MidiMessage message=now.get(j).getMessage();
+        for(MyMidiEvent oneMyMidiEvent: test){
+            // TODO: System.out.println("Track "+i);
+                System.out.println("tick="+oneMyMidiEvent.getMyEvent().getTick());
+                MidiMessage message=oneMyMidiEvent.getMyEvent().getMessage();
                 byte b[]=message.getMessage();
                 for (byte aB : b) {
                     String strHex = Integer.toHexString(aB & 0xFF);
@@ -72,19 +69,19 @@ public class Midi {
                         //                		System.out.println("The tempo of the track is:");
                         if((b[3] & 0x80) == 0)
                         {
-                            System.out.println("升调" + (b[3] & 0x01));
+                            System.out.println("Sharp" + (b[3] & 0x01));
                         }
                         else
                         {
-                            System.out.println("降调" + (b[3] & 0x01));
+                            System.out.println("Flat" + (b[3] & 0x01));
                         }
                         if(b[4] == 0)
                         {
-                            System.out.println("大调");
+                            System.out.println("Major");
                         }
                         else
                         {
-                            System.out.println("小调");
+                            System.out.println("Minor");
                         }
                     }
                 }
@@ -93,6 +90,5 @@ public class Midi {
                 System.out.println("*****************************");
             }
         }
-    }
 
 }
