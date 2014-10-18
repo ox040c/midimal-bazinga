@@ -10,6 +10,28 @@ import javax.sound.midi.*;
 
 public class MidiParser {
 
+    public static void main(String[] args) {
+
+        MidiParser inst = new MidiParser(args[0]);
+        inst.init();
+
+        ArrayList<MidiNote> test;
+
+        for (int i = 0; i < 120; i++) {
+
+            test = inst.queryBySecond(1.0 / 60.0 * i);
+
+            for (MidiNote oneMidiNote : test) {
+                System.out.format("ch:%2d freq:%3d st:%3d tick:%6d\n",
+                        oneMidiNote.getChannel(), oneMidiNote.getFreq(),
+                        oneMidiNote.getStress(), oneMidiNote.getTick());
+            }
+
+            System.out.println("--");
+
+        }
+    }
+
     Sequence seq;
 
     long microSecondPerQuarterNote;
@@ -24,9 +46,8 @@ public class MidiParser {
      * Open a midi file, and try to get sequence out of it.
      *
      * @param filename the file to be opened
-     *
      */
-    public MidiParser(String filename){
+    public MidiParser(String filename) {
         try {
             File file = new File(filename);
             seq = MidiSystem.getSequence(file);
@@ -43,13 +64,13 @@ public class MidiParser {
      * private method for parsing file into an EventList
      * calling this method would decode out necessary information
      * move costly function out of constructor
-     *
+     * <p/>
      * for the sake of simplicity, all events will be put
      * into a single list, sorted by ticks
      */
-    public void init(){
+    public void init() {
 
-        try{
+        try {
 
             // TODO: what's division type?
             // float divisionType = seq.getDivisionType();
@@ -73,7 +94,7 @@ public class MidiParser {
             }
 
             Collections.sort(noteEventList, new MyMidiEvent());
-        } catch (Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
@@ -89,7 +110,7 @@ public class MidiParser {
                 noteEventList.add(new MyMidiEvent(event));
                 break;
             case 0xf:
-                if (b[0] == (byte)0xff) {
+                if (b[0] == (byte) 0xff) {
                     switch (b[1]) {
                         case (byte) 0x51:
                             timeEventList.add(new MyMidiEvent(event));
@@ -110,7 +131,7 @@ public class MidiParser {
                             String scales = new String("CGDAEBFCGDAEBFC");
                             String mSig = Character.toString(scales.charAt(7 + b[3]));
                             String mSh = b[3] >= 0 ? "Sharp" : "Flat";
-                            mSh = b[3] == 0? "" : mSh;
+                            mSh = b[3] == 0 ? "" : mSh;
                             String mKey = b[4] == 1 ? "Minor" : "Major";
                             System.out.println(mSig + " " + mSh + " " + mKey);
                             break;
@@ -131,43 +152,39 @@ public class MidiParser {
      * event as the conversion parameter, and later "set tempo"
      * events would be ignored
      * TODO: more accurate timing
+     *
      * @param timestamp_in
      * @return
      */
     private long secondToTick(double timestamp_in) {
-        return (long) timestamp_in * 1000000 / microSecondPerQuarterNote * PPQ;
+        return (long) (timestamp_in * 1000000 / microSecondPerQuarterNote * PPQ);
     }
 
-    public ArrayList TimeEvent(double timestamp_in){
+    public ArrayList queryBySecond(double timestamp_in) {
         long timestamp = secondToTick(timestamp_in);
         //System.out.println(timestamp);
 
-        ArrayList<MyMidiEvent> poped = new ArrayList<MyMidiEvent>();
+        ArrayList<MidiNote> poped = new ArrayList<MidiNote>();
         poped.clear();
-            int index = 0;
-            /**
-             * Get events whose ticks < timestamp and pop them out of the list
-             */
-            for (MyMidiEvent anEvent : noteEventList) {
+        int index = 0;
+        /**
+         * Get events whose ticks < timestamp and pop them out of the list
+         */
+        for (MyMidiEvent anEvent : noteEventList) {
 
-                if (anEvent.getMyEvent().getTick() <= timestamp) {
-                    poped.add(anEvent);
-                }
-                else {
-                    index = noteEventList.indexOf(anEvent);
-                    break;
-                }
+            if (anEvent.getMyEvent().getTick() <= timestamp) {
+                poped.add(new MidiNote(anEvent));
+            } else {
+                index = noteEventList.indexOf(anEvent);
+                break;
             }
+        }
 
-            for (int i = 0; i < index; i++) {
-                noteEventList.remove(0);
-            }
+        for (int i = 0; i < index; i++) {
+            noteEventList.remove(0);
+        }
 
         return poped;
-    }
-
-    private int getChannel(Byte b) {
-        return b & 0x0f;
     }
 }
 
@@ -180,6 +197,9 @@ class MyMidiEvent implements Comparator<MyMidiEvent>{
      */
     public MyMidiEvent(MidiEvent event) {
         myEvent = event;
+
+        byte b[] = event.getMessage().getMessage();
+
     }
     public MyMidiEvent() {
         myEvent = null;
@@ -190,6 +210,8 @@ class MyMidiEvent implements Comparator<MyMidiEvent>{
     }
 
     private MidiEvent myEvent;
+
+
 
     @Override
     public int compare(MyMidiEvent o1, MyMidiEvent o2) {
@@ -206,3 +228,4 @@ class MyMidiEvent implements Comparator<MyMidiEvent>{
         //return 5 - b.toString().length();
     }
 }
+
