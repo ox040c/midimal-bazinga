@@ -128,7 +128,7 @@ public class MidiParser {
                             System.out.println(s);
                             break;
                         case (byte) 0x59:
-                            String scales = new String("CGDAEBFCGDAEBFC");
+                            String scales = "CGDAEBFCGDAEBFC";
                             String mSig = Character.toString(scales.charAt(7 + b[3]));
                             String mSh = b[3] >= 0 ? "Sharp" : "Flat";
                             mSh = b[3] == 0 ? "" : mSh;
@@ -153,14 +153,14 @@ public class MidiParser {
      * events would be ignored
      * TODO: more accurate timing
      *
-     * @param timestamp_in
-     * @return
+     * @param timestamp_in pass in time in second
+     * @return time in ticks
      */
     private long secondToTick(double timestamp_in) {
         return (long) (timestamp_in * 1000000 / microSecondPerQuarterNote * PPQ);
     }
 
-    public ArrayList queryBySecond(double timestamp_in) {
+    public ArrayList<MidiNote> queryBySecond(double timestamp_in) {
         long timestamp = secondToTick(timestamp_in);
         //System.out.println(timestamp);
 
@@ -197,9 +197,6 @@ class MyMidiEvent implements Comparator<MyMidiEvent>{
      */
     public MyMidiEvent(MidiEvent event) {
         myEvent = event;
-
-        byte b[] = event.getMessage().getMessage();
-
     }
     public MyMidiEvent() {
         myEvent = null;
